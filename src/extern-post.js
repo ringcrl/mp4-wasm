@@ -64,10 +64,9 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
     sequential = false,
     hevc = false,
     format = "annexb",
-    // codec = "avc1.420034", // Baseline 4.2
-    codec = "avc1.4d0034", // Main 5.2
-    acceleration,
-    bitrate,
+    codec = 'avc1.64001E',
+    acceleration = "no-preference",
+    bitrate = 2000000,
     error = defaultError,
     encoderOptions = {},
     flushFrequency = 10,
@@ -116,7 +115,7 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
 
   const encoder = new window.VideoEncoder({
     output(chunk, opts) {
-      writeAVC(chunk, opts);
+      writeAVC(chunk, opts, width, height);
     },
     error,
   });
@@ -161,7 +160,7 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
     MP4._free(p);
   }
 
-  function writeAVC(chunk, opts) {
+  function writeAVC(chunk, opts, width, height) {
     let avccConfig = null;
     if (opts.description) {
       try {
@@ -171,6 +170,9 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
         return;
       }
     }
+
+    const data = new Uint8Array(width * height)
+    chunk.copyTo(data)
 
     const nal = [];
     if (avccConfig) {
@@ -185,7 +187,7 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
     }
 
     if (format === "annexb") {
-      nal.push(new Uint8Array(chunk.data));
+      nal.push(data);
     } else {
       try {
         convertAVCToAnnexBInPlaceForLength4(chunk.data).forEach((sub) => {

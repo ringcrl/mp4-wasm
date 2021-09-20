@@ -1,7 +1,8 @@
 import loadMP4Module, { isWebCodecsSupported } from "/build/mp4.js";
+import { showMp4PreviewAndDownloadBtn } from './utils.js'
 
-const width = 1920;
-const height = 1080;
+const width = 1280;
+const height = 720;
 
 const canvas = document.querySelector("canvas");
 canvas.width = width;
@@ -16,42 +17,8 @@ const drawFrame = (interpolant) => {
   ctx.fillRect(0, 0, canvas.width * interpolant, canvas.height * interpolant);
 };
 
-const show = (data, width, height) => {
-  const url = URL.createObjectURL(new Blob([data], { type: "video/mp4" }));
-  const video = document.createElement("video");
-  video.setAttribute("muted", "muted");
-  video.setAttribute("autoplay", "autoplay");
-  video.setAttribute("controls", "controls");
-  const min = Math.min(width, window.innerWidth, window.innerHeight);
-  const aspect = width / height;
-  const size = min * 0.75;
-  video.style.width = `${size}px`;
-  video.style.height = `${size / aspect}px`;
-
-  const container = document.body;
-  container.appendChild(video);
-  video.src = url;
-
-  const text = document.createElement("div");
-  const anchor = document.createElement("a");
-  text.appendChild(anchor);
-  anchor.href = url;
-  anchor.id = "download";
-  anchor.textContent = "Click here to download MP4 file...";
-  anchor.download = "download.mp4";
-  container.appendChild(text);
-};
-
-const download = (buf, filename) => {
-  const url = URL.createObjectURL(new Blob([buf], { type: "video/mp4" }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename || "download";
-  anchor.click();
-};
-
 async function start() {
-  const fps = 60;
+  const fps = 25;
   const duration = 4;
   let frame = 0;
   let totalFrames = Math.round(fps * duration);
@@ -84,7 +51,7 @@ async function start() {
       // Get an Uint8Array buffer
       const buf = await encoder.end();
       console.timeEnd("encode");
-      show(buf, width, height);
+      showMp4PreviewAndDownloadBtn(buf, width, height);
       return;
     }
   }

@@ -19,7 +19,7 @@
     "serve": "^11.3.2"
   },
   "scripts": {
-    "test": "serve .",
+    "dev": "serve .",
     "build": "npm run clean && npm run build:wasm && npm run bundle:web && npm run bundle:node",
     "clean": "rimraf build && mkdir build",
     "build:wasm": "./build.sh",
