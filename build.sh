@@ -1,5 +1,5 @@
 # replace this with your own emsdk path
-EMSDK="/Users/matt/prj/emsdk"
+EMSDK="/Users/ringcrl/Documents/github/emsdk"
 
 # EMSDK_NODE_BIN="$EMSDK/node/12.18.1_64bit/bin"
 EMSCRIPTEN="$EMSDK/upstream/emscripten"
@@ -24,5 +24,3 @@ cmake --build .
 
 cp mp4.wasm ../build/mp4.wasm
 cp mp4.node.wasm ../build/mp4.node.wasm
-
-
