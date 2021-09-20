@@ -1,4 +1,9 @@
+// 本地开发
 import loadMP4Module, { isWebCodecsSupported } from "/build/mp4.js";
+
+// cdn 路径
+// import loadMP4Module, { isWebCodecsSupported } from "./build/mp4.js";
+
 import { nextTick, showMp4PreviewAndDownloadBtn } from './utils.js'
 
 const WIDTH = 1280;
@@ -18,7 +23,10 @@ function getApp() {
 
 async function main() {
   if (!isWebCodecsSupported()) {
-    return alert('当前浏览器不支持 Webcodecs，请使用 Chrome dev 版本')
+    const unsupportedText =  document.createElement('div')
+    unsupportedText.innerText = '当前浏览器不支持 WebCodecs，下载 Chrome Dev 版本后体验：https://www.google.com/chrome/dev/'
+    
+    return document.body.appendChild(unsupportedText)
   }
 
   const app = getApp()

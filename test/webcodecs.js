@@ -1,5 +1,5 @@
 import loadMP4Module, { isWebCodecsSupported } from "/build/mp4.js";
-import { showMp4PreviewAndDownloadBtn } from './utils.js'
+import { showMp4PreviewAndDownloadBtn } from '/demo/utils.js'
 
 const width = 1280;
 const height = 720;
