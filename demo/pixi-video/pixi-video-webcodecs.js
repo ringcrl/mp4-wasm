@@ -12,7 +12,7 @@ tmpCanvas.height = HEIGHT;
 let videoSprite = null;
 
 const generatingTips = document.createElement('p');
-generatingTips.innerText = 'Pixi.js + WebCodecs decoder/encoder 视频生成中...';
+generatingTips.innerText = '';
 
 function getApp() {
   const app = new PIXI.Application({
@@ -62,7 +62,11 @@ async function main() {
     return document.body.appendChild(unsupportedText);
   }
 
+  document.body.appendChild(generatingTips);
+
   const app = getApp();
+
+  generatingTips.innerText = '视频资源加载中...';
 
   const MP4 = await loadMP4Module();
   const encoder = MP4.createWebCodecsEncoder({ width: WIDTH, height: HEIGHT, fps: FPS });
@@ -71,6 +75,8 @@ async function main() {
   const trackInfo = await demuxer.getVideoTrackInfo();
   const { duration } = demuxer.source.info;
   const startTime = Date.now();
+
+  generatingTips.innerText = 'Pixi.js + WebCodecs decoder/encoder 视频生成中...';
 
   const decoder = new VideoDecoder({
     output: async (frame) => {
@@ -125,8 +131,6 @@ async function main() {
   demuxer.demuxVideo(0, (chunk) => {
     decoder.decode(chunk);
   });
-
-  document.body.appendChild(generatingTips);
 }
 
 main();
