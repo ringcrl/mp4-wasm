@@ -11,14 +11,14 @@ export function createFile(initialCapacity = 256) {
   let usedBytes = 0;
   let contents = new Uint8Array(initialCapacity);
   return {
-    contents: function () {
+    contents() {
       return contents.slice(0, usedBytes);
     },
-    seek: function (offset) {
+    seek(offset) {
       // offset in bytes
       cursor = offset;
     },
-    write: function (data) {
+    write(data) {
       const size = data.byteLength;
       expand(cursor + size);
       contents.set(data, cursor);
@@ -29,16 +29,16 @@ export function createFile(initialCapacity = 256) {
   };
 
   function expand(newCapacity) {
-    var prevCapacity = contents.length;
+    const prevCapacity = contents.length;
     if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
     // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
     // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
     // avoid overshooting the allocation cap by a very large margin.
-    var CAPACITY_DOUBLING_MAX = 1024 * 1024;
+    const CAPACITY_DOUBLING_MAX = 1024 * 1024;
     newCapacity = Math.max(
       newCapacity,
-      (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) >>>
-        0
+      (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125))
+        >>> 0,
     );
     if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
     const oldContents = contents;
@@ -50,7 +50,7 @@ export function createFile(initialCapacity = 256) {
 Module.isWebCodecsSupported = isWebCodecsSupported;
 export function isWebCodecsSupported() {
   return (
-    typeof window !== "undefined" && typeof window.VideoEncoder === "function"
+    typeof window !== 'undefined' && typeof window.VideoEncoder === 'function'
   );
 }
 
@@ -63,9 +63,9 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
     fragmentation = false,
     sequential = false,
     hevc = false,
-    format = "annexb",
+    format = 'annexb',
     codec = 'avc1.64001E',
-    acceleration = "no-preference",
+    acceleration = 'no-preference',
     bitrate = 2000000,
     error = defaultError,
     encoderOptions = {},
@@ -74,16 +74,16 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
 
   if (!isWebCodecsSupported()) {
     throw new Error(
-      "MP4 H264 encoding/decoding depends on WebCodecs API which is not supported in this environment"
+      'MP4 H264 encoding/decoding depends on WebCodecs API which is not supported in this environment',
     );
   }
 
-  if (typeof width !== "number" || typeof height !== "number") {
-    throw new Error("Must specify { width, height } options");
+  if (typeof width !== 'number' || typeof height !== 'number') {
+    throw new Error('Must specify { width, height } options');
   }
 
   if (!isFinite(width) || width < 0 || !isFinite(height) || height < 0) {
-    throw new Error("{ width, height } options must be positive integers");
+    throw new Error('{ width, height } options must be positive integers');
   }
 
   const file = createFile();
@@ -96,13 +96,13 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
       sequential,
       hevc,
     },
-    mux_write
+    mux_write,
   );
 
   const config = {
     codec,
-    width: width,
-    height: height,
+    width,
+    height,
     avc: {
       format,
     },
@@ -131,9 +131,10 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
     async addFrame(bitmap) {
       const timestamp = (1 / fps) * frameIndex * 1000000;
       const keyFrame = frameIndex % groupOfPictures === 0;
-      let frame = new VideoFrame(bitmap, { timestamp });
+      const frame = new VideoFrame(bitmap, { timestamp });
       encoder.encode(frame, { keyFrame });
       frame.close();
+
       if (flushFrequency != null && (frameIndex + 1) % flushFrequency === 0) {
         await encoder.flush();
       }
@@ -171,8 +172,8 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
       }
     }
 
-    const data = new Uint8Array(width * height)
-    chunk.copyTo(data)
+    const data = new Uint8Array(width * height);
+    chunk.copyTo(data);
 
     const nal = [];
     if (avccConfig) {
@@ -186,7 +187,7 @@ export function createWebCodecsEncoderWithModule(MP4, opts = {}) {
       });
     }
 
-    if (format === "annexb") {
+    if (format === 'annexb') {
       nal.push(data);
     } else {
       try {
@@ -232,7 +233,7 @@ function convertAVCToAnnexBInPlaceForLength4(arrayBuf) {
     nal_length = (nal_length << 8) + uint8[pos + 3];
 
     chunks.push(new Uint8Array(arrayBuf, pos + kLengthSize, nal_length));
-    if (nal_length == 0) throw new Error("Error: invalid nal_length 0");
+    if (nal_length === 0) throw new Error('Error: invalid nal_length 0');
     pos += kLengthSize + nal_length;
   }
   return chunks;
@@ -246,8 +247,7 @@ function parseAVCC(avcc) {
   const compat = view.getUint8(off++);
   const level = view.getUint8(off++);
   const length_size = (view.getUint8(off++) & 0x3) + 1;
-  if (length_size !== 4)
-    throw new Error("Expected length_size to indicate 4 bytes");
+  if (length_size !== 4) { throw new Error('Expected length_size to indicate 4 bytes'); }
   const numSPS = view.getUint8(off++) & 0x1f;
   const sps_list = [];
   for (let i = 0; i < numSPS; i++) {
