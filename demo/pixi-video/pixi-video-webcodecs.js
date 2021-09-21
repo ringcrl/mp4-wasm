@@ -69,6 +69,7 @@ async function main() {
 
   const demuxer = new MP4Demuxer('../assets/1280-720-33s.mp4');
   const trackInfo = await demuxer.getVideoTrackInfo();
+  const { duration } = demuxer.source.info;
   const startTime = Date.now();
 
   const decoder = new VideoDecoder({
@@ -100,6 +101,7 @@ async function main() {
           const info = `视频生成完成：
 分辨率：1280 * 720
 帧率：25
+视频时长：${duration}ms
 视频生成耗时：${costTime}ms`;
           const buf = await encoder.end();
           showMp4PreviewAndDownloadBtn(buf, WIDTH, HEIGHT);
