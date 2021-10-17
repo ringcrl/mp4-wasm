@@ -12,6 +12,16 @@ npm run build
 npm run dev
 ```
 
+## emscripten 配置
+
+```sh
+# 安装最新 cmake
+yum -y install python-pip
+pip install cmake --upgrade
+
+# 按步骤安装：https://emscripten.org/docs/getting_started/downloads.html
+```
+
 ## 待完成
 
 [] MP4 音频编码
