@@ -1,1 +1,1 @@
-cp -R build demo/build
+cp -R build public/build
