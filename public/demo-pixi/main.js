@@ -1,10 +1,11 @@
-import loadMP4Module, { isWebCodecsSupported } from './build/mp4.js';
-import { showMp4PreviewAndDownloadBtn } from './libs/utils.js';
-import { MP4Demuxer } from './libs/mp4_demuxer.js';
+import loadMP4Module, { isWebCodecsSupported } from '../build/mp4.js';
+import { showMp4PreviewAndDownloadBtn } from '../libs/utils.js';
+import { MP4Demuxer } from '../libs/mp4_demuxer.js';
 
 const WIDTH = 1280;
 const HEIGHT = 720;
 const FPS = 25;
+const MP4_PATH = '../assets/1280-720-33s.mp4';
 
 const tmpCanvas = document.createElement('canvas');
 tmpCanvas.width = WIDTH;
@@ -71,8 +72,9 @@ async function main() {
   const MP4 = await loadMP4Module();
   const encoder = MP4.createWebCodecsEncoder({ width: WIDTH, height: HEIGHT, fps: FPS });
 
-  const demuxer = new MP4Demuxer('./assets/1280-720-33s.mp4');
-  const trackInfo = await demuxer.getVideoTrackInfo();
+  const demuxer = new MP4Demuxer(MP4_PATH);
+  const videoTrackInfo = await demuxer.getVideoTrackInfo();
+
   const { duration } = demuxer.source.info;
   const startTime = Date.now();
 
@@ -121,8 +123,8 @@ async function main() {
   });
 
   const config = {
-    codec: trackInfo.codec,
-    description: trackInfo.extradata,
+    codec: videoTrackInfo.codec,
+    description: videoTrackInfo.extradata,
   };
 
   console.assert(VideoDecoder.isConfigSupported(config));

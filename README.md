@@ -8,7 +8,7 @@
 # 编译 wasm 文件
 npm run build
 
-# 起服务，打开 demo 目录
+# 开启服务，打开 public 下的 demo-xxx 目录
 npm run dev
 ```
 
