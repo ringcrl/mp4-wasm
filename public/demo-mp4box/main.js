@@ -2,6 +2,9 @@ const url = '../assets/1280-720-33s.mp4';
 
 const handleAudioEncoding = false;
 
+const FPS = 25;
+const MICROSECONDS_PER_FRAME = 1000000 / FPS;
+
 let muxStarted = false;
 
 // ---- MP4BOX VARIABLES
@@ -138,8 +141,11 @@ const continueReading = () => {
 
     console.log('VIDEO decodedFrameCount:', `${decodedVideoFrameCount} VS encodedFrameCount:${encodedVideoFrameCount}`);
 
-    if (waitingVideoReading === false) readNextFrame();
-    else console.log('waiting videoEncoder');
+    if (waitingVideoReading === false) {
+      readNextFrame();
+    } else {
+      console.log('waiting videoEncoder');
+    }
 
     return;
   }
@@ -149,8 +155,11 @@ const continueReading = () => {
 
     console.log('AUDIO decodedFrameCount:', `${decodedVideoFrameCount} VS encodedFrameCount:${encodedVideoFrameCount}`);
 
-    if (waitingAudioReading === false) readNextFrame();
-    else console.log('waiting audioEncoder');
+    if (waitingAudioReading === false) {
+      readNextFrame();
+    } else {
+      console.log('waiting audioEncoder');
+    }
   }
 };
 
@@ -159,17 +168,19 @@ const onVideoFrameReadyToUse = (imageBitmap) => {
     ctx.drawImage(bmp, 0, 0);
 
     const timestamp = videoFrameDurationInMicrosecond * decodedVideoFrameCount;
-    console.log(timestamp);
 
-    const videoFrame = new VideoFrame(bmp, { timestamp });
+    const videoFrame = new VideoFrame(bmp, { timestamp, duration: videoFrameDurationInMicrosecond });
     videoEncoder.encode(videoFrame);
     videoFrame.close();
     bmp.close();
 
     decodedVideoFrameCount++;
 
-    if (decodedVideoFrameCount === nbSampleTotal) onVideoDemuxingComplete();
-    else continueReading();
+    if (decodedVideoFrameCount === nbSampleTotal) {
+      onVideoDemuxingComplete();
+    } else {
+      continueReading();
+    }
   });
 
   imageBitmap.close();
@@ -195,12 +206,17 @@ const onAudioFrameReadyToUse = (audioFrame) => {
 
   decodedAudioFrameCount++;
 
-  if (decodedAudioFrameCount === nbSampleTotal) onAudioDemuxingComplete();
-  else readNextFrame();
+  if (decodedAudioFrameCount === nbSampleTotal) {
+    onAudioDemuxingComplete();
+  } else {
+    readNextFrame();
+  }
 };
 
 let getNextSampleArray = () => {
-  if (!stopped || !muxStarted || (processingVideo && countSample === nbSampleTotal)) return;
+  if (!stopped || !muxStarted || (processingVideo && countSample === nbSampleTotal)) {
+    return;
+  }
 
   stopped = false;
   file.start();
@@ -269,16 +285,21 @@ const setupVideoEncoder = (config) => {
       const buffer = new ArrayBuffer(encodedChunk.byteLength);
       encodedChunk.copyTo(buffer);
 
-      videoEncodingSampleOptions.dts = encodedChunk.timestamp;
-      videoEncodingSampleOptions.cts = encodedChunk.timestamp;
+      // videoEncodingSampleOptions.dts = encodedChunk.timestamp;
+      // videoEncodingSampleOptions.cts = encodedChunk.timestamp;
+      videoEncodingSampleOptions.dts = encodedVideoFrameCount * MICROSECONDS_PER_FRAME;
+      videoEncodingSampleOptions.cts = encodedVideoFrameCount * MICROSECONDS_PER_FRAME;
       videoEncodingSampleOptions.is_sync = encodedChunk.type === 'key';
 
       outputFile.addSample(encodingVideoTrack, buffer, videoEncodingSampleOptions);
 
       encodedVideoFrameCount++;
 
-      if (encodedVideoFrameCount === videoNbSample) onVideoEncodingComplete();
-      else if (waitingVideoReading) continueReading();
+      if (encodedVideoFrameCount === videoNbSample) {
+        onVideoEncodingComplete();
+      } else if (waitingVideoReading) {
+        continueReading();
+      }
     },
     error: (err) => {
       console.log('VideoEncoder error : ', err);
@@ -441,11 +462,11 @@ let setupAudioDecoder = (config) => {
 
   audioDecoder = new window.AudioDecoder({
     output: (audioFrame) => {
-      // console.log("audioFrame = ",audioFrame);
-
       audioFrames.push(audioFrame);
 
-      if (timeout) clearTimeout(timeout);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
       timeout = setTimeout(() => {
         if (waitingFrame) {
           waitingFrame = false;
@@ -532,8 +553,6 @@ file.onSamples = (trackId, ref, samples) => {
     file.stop();
 
     countSample += samples.length;
-
-    // console.log("onSample ",countSample+" VS "+nbSampleTotal)
 
     for (const sample of samples) {
       const type = sample.is_sync ? 'key' : 'delta';
