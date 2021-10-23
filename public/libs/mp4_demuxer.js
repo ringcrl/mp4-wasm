@@ -1,5 +1,3 @@
-const DEMUX_STOP_SECS = 30; // 30 seconds
-
 class MP4Source {
   constructor(uri) {
     this.file = MP4Box.createFile();

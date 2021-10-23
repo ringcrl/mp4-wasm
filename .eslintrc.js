@@ -48,5 +48,6 @@ module.exports = {
     'consistent-return': 0,
     'max-classes-per-file': 0,
     'no-bitwise': 0,
+    'prefer-destructuring': 0,
   },
 };

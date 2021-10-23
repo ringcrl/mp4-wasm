@@ -1,6 +1,6 @@
-import loadMP4Module, { isWebCodecsSupported } from '../build/mp4.js';
-import { showMp4PreviewAndDownloadBtn } from '../libs/utils.js';
-import { MP4Demuxer } from './mp4_demuxer.js';
+import loadMP4Module, { isWebCodecsSupported } from './build/mp4.js';
+import { showMp4PreviewAndDownloadBtn } from './libs/utils.js';
+import { MP4Demuxer } from './libs/mp4_demuxer.js';
 
 const WIDTH = 1280;
 const HEIGHT = 720;
@@ -71,7 +71,7 @@ async function main() {
   const MP4 = await loadMP4Module();
   const encoder = MP4.createWebCodecsEncoder({ width: WIDTH, height: HEIGHT, fps: FPS });
 
-  const demuxer = new MP4Demuxer('../assets/1280-720-33s.mp4');
+  const demuxer = new MP4Demuxer('./assets/1280-720-33s.mp4');
   const trackInfo = await demuxer.getVideoTrackInfo();
   const { duration } = demuxer.source.info;
   const startTime = Date.now();
