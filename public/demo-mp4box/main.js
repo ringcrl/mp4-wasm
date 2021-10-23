@@ -138,7 +138,7 @@ const continueReading = () => {
 
     console.log('VIDEO decodedFrameCount:', `${decodedVideoFrameCount} VS encodedFrameCount:${encodedVideoFrameCount}`);
 
-    if (waitingVideoReading == false) readNextFrame();
+    if (waitingVideoReading === false) readNextFrame();
     else console.log('waiting videoEncoder');
 
     return;
@@ -149,7 +149,7 @@ const continueReading = () => {
 
     console.log('AUDIO decodedFrameCount:', `${decodedVideoFrameCount} VS encodedFrameCount:${encodedVideoFrameCount}`);
 
-    if (waitingAudioReading == false) readNextFrame();
+    if (waitingAudioReading === false) readNextFrame();
     else console.log('waiting audioEncoder');
   }
 };
@@ -168,7 +168,7 @@ const onVideoFrameReadyToUse = (imageBitmap) => {
 
     decodedVideoFrameCount++;
 
-    if (decodedVideoFrameCount == nbSampleTotal) onVideoDemuxingComplete();
+    if (decodedVideoFrameCount === nbSampleTotal) onVideoDemuxingComplete();
     else continueReading();
   });
 
@@ -195,12 +195,12 @@ const onAudioFrameReadyToUse = (audioFrame) => {
 
   decodedAudioFrameCount++;
 
-  if (decodedAudioFrameCount == nbSampleTotal) onAudioDemuxingComplete();
+  if (decodedAudioFrameCount === nbSampleTotal) onAudioDemuxingComplete();
   else readNextFrame();
 };
 
 let getNextSampleArray = () => {
-  if (!stopped || !muxStarted || (processingVideo && countSample == nbSampleTotal)) return;
+  if (!stopped || !muxStarted || (processingVideo && countSample === nbSampleTotal)) return;
 
   stopped = false;
   file.start();
@@ -208,7 +208,7 @@ let getNextSampleArray = () => {
 
 let readNextFrame = () => {
   if (processingVideo) {
-    if (videoFrames.length == 0) {
+    if (videoFrames.length === 0) {
       if (decodedVideoFrameCount > 0) {
         if (!waitingFrame) {
           waitingFrame = true;
@@ -225,7 +225,7 @@ let readNextFrame = () => {
   //-----------
 
   if (processingAudio) {
-    if (audioFrames.length == 0) {
+    if (audioFrames.length === 0) {
       if (decodedAudioFrameCount > 0) {
         if (!waitingFrame) {
           waitingFrame = true;
@@ -269,14 +269,15 @@ const setupVideoEncoder = (config) => {
       const buffer = new ArrayBuffer(encodedChunk.byteLength);
       encodedChunk.copyTo(buffer);
 
-      videoEncodingSampleOptions.dts = videoEncodingSampleOptions.cts = encodedChunk.timestamp;
-      videoEncodingSampleOptions.is_sync = encodedChunk.type == 'key';
+      videoEncodingSampleOptions.dts = encodedChunk.timestamp;
+      videoEncodingSampleOptions.cts = encodedChunk.timestamp;
+      videoEncodingSampleOptions.is_sync = encodedChunk.type === 'key';
 
       outputFile.addSample(encodingVideoTrack, buffer, videoEncodingSampleOptions);
 
       encodedVideoFrameCount++;
 
-      if (encodedVideoFrameCount == videoNbSample) onVideoEncodingComplete();
+      if (encodedVideoFrameCount === videoNbSample) onVideoEncodingComplete();
       else if (waitingVideoReading) continueReading();
     },
     error: (err) => {
@@ -308,23 +309,7 @@ let setupAudioEncoder = (config) => {
 
   audioEncoder = new window.AudioEncoder({
     output: (encodedChunk, config) => {
-      if (encodingVideoTrack == null) {
-        videoEncodingTrackOptions.avcDecoderConfigRecord = config.decoderConfig.description;
-        encodingVideoTrack = outputFile.addTrack(videoEncodingTrackOptions);
-      }
-
-      const buffer = new ArrayBuffer(encodedChunk.byteLength);
-      encodedChunk.copyTo(buffer);
-
-      videoEncodingSampleOptions.dts = videoEncodingSampleOptions.cts = encodedChunk.timestamp;
-      videoEncodingSampleOptions.is_sync = encodedChunk.type == 'key';
-
-      outputFile.addSample(encodingVideoTrack, buffer, videoEncodingSampleOptions);
-
-      encodedVideoFrameCount++;
-
-      if (encodedVideoFrameCount == videoNbSample) onVideoEncodingComplete();
-      else if (waitingVideoReading) continueReading();
+      // TODO:
     },
     error: (err) => {
       console.log('AudioEncoder.error : ', err);
@@ -383,7 +368,7 @@ const getExtradata = () => {
     writeUint8Array(avccBox.PPS[i].nalu);
   }
 
-  if (id != size) throw 'size mismatched !';
+  if (id !== size) throw new Error('size mismatched !');
   return data;
 };
 
@@ -542,7 +527,7 @@ file.onSamples = (trackId, ref, samples) => {
   // I process the dumux-step little by little in order to save memory
   // so I stop file reading between 2 demux-process
 
-  if (videoTrack.id == trackId) {
+  if (videoTrack.id === trackId) {
     stopped = true;
     file.stop();
 
@@ -563,7 +548,7 @@ file.onSamples = (trackId, ref, samples) => {
       videoDecoder.decode(chunk);
     }
 
-    if (countSample == nbSampleTotal) {
+    if (countSample === nbSampleTotal) {
       videoDecoder.flush();
     }
 
@@ -572,7 +557,7 @@ file.onSamples = (trackId, ref, samples) => {
 
   //-----------
 
-  if (audioTrack.id == trackId) {
+  if (audioTrack.id === trackId) {
     // console.log("get audio sample")
 
     stopped = true;
@@ -595,7 +580,7 @@ file.onSamples = (trackId, ref, samples) => {
       audioDecoder.decode(chunk);
     }
 
-    if (countSample == nbSampleTotal) {
+    if (countSample === nbSampleTotal) {
       audioDecoder.flush();
     }
   }
@@ -610,7 +595,7 @@ const loadFile = (url) => {
     const reader = response.body.getReader();
 
     const push = () => reader.read().then(({ done, value }) => {
-      if (done == true) {
+      if (done === true) {
         file.flush(); // -> will call file.onReady
         return;
       }
