@@ -1,14 +1,14 @@
 const url = '../assets/1280-720-33s.mp4';
 
-const handleAudioEncoding = false;
+const handleAudioEncoding = true;
 
 const FPS = 25;
 const MICROSECONDS_PER_FRAME = 1000000 / FPS;
 
 let muxStarted = false;
 
-// ---- MP4BOX VARIABLES
-const nbSampleMax = 30; // nb samples extracted each time
+// ---- MP4BOX 变量
+const nbSampleMax = 30; // 每次提取的帧数
 let nbSampleTotal = 0;
 let countSample = 0;
 let file = null;
@@ -32,36 +32,44 @@ let videoH;
 
 // ---- AUDIO DECODING VARIABLES
 let audioDecoder = null;
-const audioSampleLength = 1024;
+const audioSampleLength = 0.04 * 44100;
 let audioSamplerate;
 let audioChannelCount;
 let audioNbSample;
 const audioFrames = [];
 let decodedAudioFrameCount = 0;
-const leftChannelOptions = { planeIndex: 0, frameOffset: 0, frameCount: audioSampleLength };
-const rightChannelOptions = { planeIndex: 1, frameOffset: 0, frameCount: audioSampleLength };
+const leftChannelOptions = {
+  planeIndex: 0,
+  frameOffset: 0,
+  frameCount: audioSampleLength,
+};
+const rightChannelOptions = {
+  planeIndex: 1,
+  frameOffset: 0,
+  frameCount: audioSampleLength,
+};
 let processingAudio = false;
 
 // ----- VIDEO ENCODER VARIABLES
 let videoEncoder = null;
-const encodingFrameDistance = 5;// difference between last reading frame and last encoding frame
-// |-> we need to slow down the process in order to avoid a saturation of VideoEncoder
-// |==> when VideoEncoder is saturated by the data we send, the process became much more slower
-// |===> so, I'll pause the video decoding/reading when VideoDecoder progression became too late
+// 最后一个读取帧和最后一个编码帧之间的差异
+// 我们需要放慢进程，以避免VideoEncoder的饱和度。
+// 当VideoEncoder被我们发送的数据淹没时，这个过程就会变得更慢。所以，当VideoDecoder的进程变得太晚时，我会暂停视频解码/读取
+const encodingFrameDistance = 5;
 
 let waitingVideoReading = false;
 let encodedVideoFrameCount = 0;
 let encodingVideoTrack = null;
 let videoFrameDurationInMicrosecond;
-const encodingVideoScale = 0.5; // we will transcode the video in another size ()
+const encodingVideoScale = 0.5; // 我们将以另一种尺寸对视频进行转码
 let outputW;
 let outputH;
 
 // ------ AUDIO ENCODING VARIABLES
 let audioEncoder = null;
 let waitingAudioReading = false;
-const encodingAudioTrack = null;
-const encodedAudioFrameCount = 0;
+let encodingAudioTrack = null;
+let encodedAudioFrameCount = 0;
 
 const output = document.createElement('canvas');
 output.width = outputW;
@@ -313,15 +321,14 @@ const setupVideoEncoder = (config) => {
 // --- setup audioEncoder ------
 
 let setupAudioEncoder = (config) => {
-  const videoEncodingTrackOptions = {
+  const audioEncodingTrackOptions = {
     timescale: oneSecondInMicrosecond,
-    w: outputW,
-    h: outputH,
-    nb_samples: videoNbSample,
+    nb_samples: audioNbSample,
     avcDecoderConfigRecord: null,
+    type: 'ac-3',
   };
 
-  const videoEncodingSampleOptions = {
+  const audioEncodingSampleOptions = {
     duration: videoFrameDurationInMicrosecond,
     dts: 0,
     cts: 0,
@@ -330,7 +337,33 @@ let setupAudioEncoder = (config) => {
 
   audioEncoder = new window.AudioEncoder({
     output: (encodedChunk, config) => {
-      // TODO:
+      if (encodingAudioTrack === null) {
+        audioEncodingTrackOptions.avcDecoderConfigRecord = config.decoderConfig.description;
+        encodingAudioTrack = outputFile.addTrack(audioEncodingTrackOptions);
+      }
+
+      const buffer = new ArrayBuffer(encodedChunk.byteLength);
+      encodedChunk.copyTo(buffer);
+
+      // videoEncodingSampleOptions.dts = encodedChunk.timestamp;
+      // videoEncodingSampleOptions.cts = encodedChunk.timestamp;
+      audioEncodingSampleOptions.dts = encodedAudioFrameCount * MICROSECONDS_PER_FRAME;
+      audioEncodingSampleOptions.cts = encodedAudioFrameCount * MICROSECONDS_PER_FRAME;
+      audioEncodingSampleOptions.is_sync = encodedChunk.type === 'key';
+
+      outputFile.addSample(encodingAudioTrack, buffer, audioEncodingSampleOptions);
+
+      encodedAudioFrameCount++;
+
+      console.log('encodedAudioFrameCount', encodedAudioFrameCount);
+
+      const allCount = 548;
+      // const allCount = audioNbSample;
+      if (encodedAudioFrameCount === allCount) {
+        onAudioEncodingComplete();
+      } else if (waitingAudioReading) {
+        continueReading();
+      }
     },
     error: (err) => {
       console.log('AudioEncoder.error : ', err);
