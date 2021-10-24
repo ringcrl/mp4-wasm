@@ -245,6 +245,7 @@ const setupVideoEncoder = (config) => {
     height: outputH,
     nb_samples: videoNbSample,
     media_duration: videoNbSample * 1000 / FPS,
+    brands: ['isom', 'iso2', 'avc1', 'mp41'],
     avcDecoderConfigRecord: null,
   };
 
@@ -294,6 +295,7 @@ let setupAudioEncoder = (config) => {
     media_duration: 0,
     duration: 0,
     nb_samples: 0,
+    samplerate: SAMPLE_RATE,
     width: 0,
     height: 0,
     hdlr: 'soun',
@@ -316,17 +318,20 @@ let setupAudioEncoder = (config) => {
         // https://github.com/w3c/webcodecs/issues/240
         totalaudioEncodeCount = Math.floor(audioTotalTimestamp / encodedChunk.duration);
         audioEncodingTrackOptions.nb_samples = totalaudioEncodeCount;
-        audioEncodingTrackOptions.duration = audioTotalTimestamp / 1000;
-        audioEncodingTrackOptions.media_duration = audioTotalTimestamp * SAMPLE_RATE / 1000;
+        const trackDuration = audioTotalTimestamp / ONE_SECOND_IN_MICROSECOND;
+        audioEncodingTrackOptions.duration = trackDuration;
+        audioEncodingTrackOptions.media_duration = trackDuration * SAMPLE_RATE;
         encodingAudioTrack = outputFile.addTrack(audioEncodingTrackOptions);
       }
 
       const buffer = new ArrayBuffer(encodedChunk.byteLength);
       encodedChunk.copyTo(buffer);
 
-      audioEncodingSampleOptions.dts = encodedAudioFrameCount * encodedChunk.duration;
-      audioEncodingSampleOptions.cts = encodedAudioFrameCount * encodedChunk.duration;
-      audioEncodingSampleOptions.duration = encodedChunk.duration;
+      const sampleDuration = encodedChunk.duration / SAMPLE_RATE;
+
+      audioEncodingSampleOptions.dts = encodedAudioFrameCount * sampleDuration;
+      audioEncodingSampleOptions.cts = encodedAudioFrameCount * sampleDuration;
+      audioEncodingSampleOptions.duration = sampleDuration;
       audioEncodingSampleOptions.is_sync = encodedChunk.type === 'key';
 
       outputFile.addSample(encodingAudioTrack, buffer, audioEncodingSampleOptions);
