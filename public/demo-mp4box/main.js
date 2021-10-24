@@ -270,9 +270,10 @@ outputFile = MP4Box.createFile();
 const setupVideoEncoder = (config) => {
   const videoEncodingTrackOptions = {
     timescale: oneSecondInMicrosecond,
-    w: outputW,
-    h: outputH,
+    width: outputW,
+    height: outputH,
     nb_samples: videoNbSample,
+    media_duration: videoNbSample * 1000 / FPS,
     avcDecoderConfigRecord: null,
   };
 
@@ -322,10 +323,16 @@ const setupVideoEncoder = (config) => {
 
 let setupAudioEncoder = (config) => {
   const audioEncodingTrackOptions = {
-    timescale: oneSecondInMicrosecond,
-    nb_samples: audioNbSample,
-    avcDecoderConfigRecord: null,
-    type: 'ac-3',
+    timescale: 44100,
+    media_duration: 1476608,
+    duration: 33484,
+    nb_samples: 548,
+    width: 0,
+    height: 0,
+    hdlr: 'soun',
+    name: 'SoundHandler',
+    // avcDecoderConfigRecord: null,
+    type: 'mp4a',
   };
 
   const audioEncodingSampleOptions = {
@@ -337,8 +344,9 @@ let setupAudioEncoder = (config) => {
 
   audioEncoder = new window.AudioEncoder({
     output: (encodedChunk, config) => {
+      console.log('音频 output 计数');
       if (encodingAudioTrack === null) {
-        audioEncodingTrackOptions.avcDecoderConfigRecord = config.decoderConfig.description;
+        // audioEncodingTrackOptions.avcDecoderConfigRecord = config.decoderConfig.description;
         encodingAudioTrack = outputFile.addTrack(audioEncodingTrackOptions);
       }
 
@@ -530,6 +538,7 @@ file.onError = (e) => {
 };
 file.onReady = (info) => {
   muxStarted = true;
+  debugger;
   videoTrack = info.videoTracks[0];
   audioTrack = info.audioTracks[0];
   console.log('audioTrack ', audioTrack);

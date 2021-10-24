@@ -4901,6 +4901,7 @@ BoxParser.hvc1SampleEntry.prototype.getCodec = function() {
 }
 
 BoxParser.mp4aSampleEntry.prototype.getCodec = function() {
+	debugger
 	var baseCodec = BoxParser.SampleEntry.prototype.getCodec.call(this);
 	if (this.esds && this.esds.esd) {
 		var oti = this.esds.esd.getOTI();
@@ -6719,6 +6720,7 @@ ISOFile.prototype.init = function (_options) {
 }
 
 ISOFile.prototype.addTrack = function (_options) {
+	debugger
 	if (!this.moov) {
 		this.init(_options);
 	}
