@@ -1,13 +1,17 @@
-const url = '../assets/1280-720-33s.mp4';
+const FILE_URL = '../assets/1280-720-33s.mp4';
 
 const handleAudioEncoding = true;
 
 const FPS = 25;
-const MICROSECONDS_PER_FRAME = 1000000 / FPS;
+const ONE_SECOND_IN_MICROSECOND = 1000000;
+const BITRATE = 15000000;
+const MICROSECONDS_PER_FRAME = ONE_SECOND_IN_MICROSECOND / FPS;
+
+// const SAMPLE_RATE = 44100;
+// const BUFFER_LENGTH = MICROSECONDS_PER_FRAME / ONE_SECOND_IN_MICROSECOND * SAMPLE_RATE;
 
 let muxStarted = false;
 
-// ---- MP4BOX 变量
 const nbSampleMax = 30; // 每次提取的帧数
 let nbSampleTotal = 0;
 let countSample = 0;
@@ -17,9 +21,7 @@ let stopped = true;
 let videoTrack = null;
 let audioTrack = null;
 let outputFile = null;
-const oneSecondInMicrosecond = 1000000;
 
-// ---- VIDEO DECODING VARIABLES
 let videoDuration = 0;
 let videoDecoder = null;
 const videoFrames = [];
@@ -30,46 +32,46 @@ let videoFramerate;
 let videoW;
 let videoH;
 
-// ---- AUDIO DECODING VARIABLES
 let audioDecoder = null;
-const audioSampleLength = 0.04 * 44100;
-let audioSamplerate;
-let audioChannelCount;
-let audioNbSample;
-const audioFrames = [];
+
+const decodedAudioFrames = [];
 let decodedAudioFrameCount = 0;
-const leftChannelOptions = {
-  planeIndex: 0,
-  frameOffset: 0,
-  frameCount: audioSampleLength,
-};
-const rightChannelOptions = {
-  planeIndex: 1,
-  frameOffset: 0,
-  frameCount: audioSampleLength,
-};
+let audioTotalTimestamp = 0;
+// let audioNbSample;
+// let audioSamplerate;
+// let audioChannelCount;
+// const leftChannelOptions = {
+//   planeIndex: 0,
+//   frameOffset: 0,
+//   frameCount: audioSampleLength,
+// };
+// const rightChannelOptions = {
+//   planeIndex: 1,
+//   frameOffset: 0,
+//   frameCount: audioSampleLength,
+// };
 let processingAudio = false;
 
-// ----- VIDEO ENCODER VARIABLES
 let videoEncoder = null;
 // 最后一个读取帧和最后一个编码帧之间的差异
-// 我们需要放慢进程，以避免VideoEncoder的饱和度。
-// 当VideoEncoder被我们发送的数据淹没时，这个过程就会变得更慢。所以，当VideoDecoder的进程变得太晚时，我会暂停视频解码/读取
+// 需要放慢进程，以避免VideoEncoder的饱和度
+// 当VideoEncoder被我们发送的数据淹没时，这个过程就会变得更慢
+// 当VideoDecoder的进程变得太慢的时候暂停视频解码/读取
 const encodingFrameDistance = 5;
 
 let waitingVideoReading = false;
 let encodedVideoFrameCount = 0;
 let encodingVideoTrack = null;
 let videoFrameDurationInMicrosecond;
-const encodingVideoScale = 0.5; // 我们将以另一种尺寸对视频进行转码
+const encodingVideoScale = 0.5; // 更改输出视频
 let outputW;
 let outputH;
 
-// ------ AUDIO ENCODING VARIABLES
 let audioEncoder = null;
 let waitingAudioReading = false;
 let encodingAudioTrack = null;
 let encodedAudioFrameCount = 0;
+let totalaudioEncodeCount = 0;
 
 const output = document.createElement('canvas');
 output.width = outputW;
@@ -78,13 +80,11 @@ const ctx = output.getContext('2d');
 
 document.body.appendChild(output);
 
-// ---- Utility functions  --
+outputFile = MP4Box.createFile();
 
 const freeMemory = () => {
   if (processingVideo) {
     if (decodedVideoFrameCount > 0) {
-      // let trackId = videoTrack.id;
-      // let lastSampleUsed = decodedVideoFrameCount-1;
       file.releaseUsedSamples(videoTrack.id, decodedVideoFrameCount - 1);
     }
     return;
@@ -97,7 +97,6 @@ const freeMemory = () => {
 };
 
 const onVideoDemuxingComplete = () => {
-  console.log('video demux complete');
   videoDecoder.close();
 
   processingVideo = false;
@@ -123,11 +122,9 @@ const onVideoDemuxingComplete = () => {
 
 const saveFile = () => {
   outputFile.save('test.mp4');
-  console.log('file saved !');
 };
 
 const onAudioDemuxingComplete = () => {
-  console.log('onAudioDemuxCompleted !');
   audioDecoder.close();
 };
 
@@ -137,8 +134,7 @@ const onAudioEncodingComplete = () => {
 };
 
 const onVideoEncodingComplete = () => {
-  console.log('video encoding complete !');
-  videoEncoder.close(); // <=== in chrome 93 I must add a timeout in order to close the videoEncoder without error (ok in canary)
+  videoEncoder.close();
 
   if (!audioTrack || !handleAudioEncoding) saveFile();
 };
@@ -147,12 +143,10 @@ const continueReading = () => {
   if (processingVideo) {
     waitingVideoReading = decodedVideoFrameCount - encodedVideoFrameCount > encodingFrameDistance;
 
-    console.log('VIDEO decodedFrameCount:', `${decodedVideoFrameCount} VS encodedFrameCount:${encodedVideoFrameCount}`);
-
     if (waitingVideoReading === false) {
       readNextFrame();
     } else {
-      console.log('waiting videoEncoder');
+      // console.log('waiting videoEncoder');
     }
 
     return;
@@ -161,12 +155,10 @@ const continueReading = () => {
   if (processingAudio) {
     waitingAudioReading = decodedAudioFrameCount - encodedAudioFrameCount > encodingFrameDistance;
 
-    console.log('AUDIO decodedFrameCount:', `${decodedVideoFrameCount} VS encodedFrameCount:${encodedVideoFrameCount}`);
-
     if (waitingAudioReading === false) {
       readNextFrame();
     } else {
-      console.log('waiting audioEncoder');
+      // console.log('waiting audioEncoder');
     }
   }
 };
@@ -236,7 +228,6 @@ let readNextFrame = () => {
       if (decodedVideoFrameCount > 0) {
         if (!waitingFrame) {
           waitingFrame = true;
-          // console.log("call getNextSampleArray ",decodedVideoFrameCount)
           getNextSampleArray();
         }
       }
@@ -246,30 +237,23 @@ let readNextFrame = () => {
     return;
   }
 
-  //-----------
-
   if (processingAudio) {
-    if (audioFrames.length === 0) {
+    if (decodedAudioFrames.length === 0) {
       if (decodedAudioFrameCount > 0) {
         if (!waitingFrame) {
           waitingFrame = true;
-          // console.log("call getNextSampleArray ",decodedAudioFrameCount)
           getNextSampleArray();
         }
       }
     } else {
-      onAudioFrameReadyToUse(audioFrames.shift());
+      onAudioFrameReadyToUse(decodedAudioFrames.shift());
     }
   }
 };
 
-// ---- setup videoEncoder -----
-
-outputFile = MP4Box.createFile();
-
 const setupVideoEncoder = (config) => {
   const videoEncodingTrackOptions = {
-    timescale: oneSecondInMicrosecond,
+    timescale: ONE_SECOND_IN_MICROSECOND,
     width: outputW,
     height: outputH,
     nb_samples: videoNbSample,
@@ -294,8 +278,6 @@ const setupVideoEncoder = (config) => {
       const buffer = new ArrayBuffer(encodedChunk.byteLength);
       encodedChunk.copyTo(buffer);
 
-      // videoEncodingSampleOptions.dts = encodedChunk.timestamp;
-      // videoEncodingSampleOptions.cts = encodedChunk.timestamp;
       videoEncodingSampleOptions.dts = encodedVideoFrameCount * MICROSECONDS_PER_FRAME;
       videoEncodingSampleOptions.cts = encodedVideoFrameCount * MICROSECONDS_PER_FRAME;
       videoEncodingSampleOptions.is_sync = encodedChunk.type === 'key';
@@ -311,15 +293,13 @@ const setupVideoEncoder = (config) => {
       }
     },
     error: (err) => {
-      console.log('VideoEncoder error : ', err);
+      console.error('VideoEncoder error : ', err);
     },
 
   });
 
   videoEncoder.configure(config);
 };
-
-// --- setup audioEncoder ------
 
 let setupAudioEncoder = (config) => {
   const audioEncodingTrackOptions = {
@@ -331,7 +311,6 @@ let setupAudioEncoder = (config) => {
     height: 0,
     hdlr: 'soun',
     name: 'SoundHandler',
-    // avcDecoderConfigRecord: null,
     type: 'mp4a',
   };
 
@@ -344,44 +323,38 @@ let setupAudioEncoder = (config) => {
 
   audioEncoder = new window.AudioEncoder({
     output: (encodedChunk, config) => {
-      console.log('音频 output 计数');
       if (encodingAudioTrack === null) {
-        // audioEncodingTrackOptions.avcDecoderConfigRecord = config.decoderConfig.description;
+        // audioEncoder.encode 触发的次数与 AudioEncoder.output 触发的次数不一致
+        // 且没有找到将两段对齐的 API，只能手动算一个不精确的值了
+        // https://github.com/w3c/webcodecs/issues/240
+        totalaudioEncodeCount = Math.floor(audioTotalTimestamp / encodedChunk.duration);
         encodingAudioTrack = outputFile.addTrack(audioEncodingTrackOptions);
       }
 
       const buffer = new ArrayBuffer(encodedChunk.byteLength);
       encodedChunk.copyTo(buffer);
 
-      // videoEncodingSampleOptions.dts = encodedChunk.timestamp;
-      // videoEncodingSampleOptions.cts = encodedChunk.timestamp;
-      audioEncodingSampleOptions.dts = encodedAudioFrameCount * MICROSECONDS_PER_FRAME;
-      audioEncodingSampleOptions.cts = encodedAudioFrameCount * MICROSECONDS_PER_FRAME;
+      audioEncodingSampleOptions.dts = encodedAudioFrameCount * encodedChunk.duration;
+      audioEncodingSampleOptions.cts = encodedAudioFrameCount * encodedChunk.duration;
       audioEncodingSampleOptions.is_sync = encodedChunk.type === 'key';
 
       outputFile.addSample(encodingAudioTrack, buffer, audioEncodingSampleOptions);
 
       encodedAudioFrameCount++;
 
-      console.log('encodedAudioFrameCount', encodedAudioFrameCount);
-
-      const allCount = 548;
-      // const allCount = audioNbSample;
-      if (encodedAudioFrameCount === allCount) {
+      if (encodedAudioFrameCount >= totalaudioEncodeCount) {
         onAudioEncodingComplete();
       } else if (waitingAudioReading) {
         continueReading();
       }
     },
     error: (err) => {
-      console.log('AudioEncoder.error : ', err);
+      console.error('AudioEncoder error : ', err);
     },
   });
 
   audioEncoder.configure(config);
 };
-
-// ---- setup videoDecoder -----
 
 const getExtradata = () => {
   // generate the property "description" for the object used in VideoDecoder.configure
@@ -477,33 +450,26 @@ const setupVideoDecoder = (config) => {
           }
         }, 15);
       });
-
-      if (!this.started) {
-        this.started = true;
-        if (this.onReadyToPlay) this.onReadyToPlay();
-      }
     },
     error: (e) => {
-      console.log('webcodec.VideoDecoder error : ', e);
+      console.error('VideoDecoder error : ', e);
     },
   });
 
   videoDecoder.configure(config);
   file.setExtractionOptions(videoTrack.id, null, { nbSamples: nbSampleMax });
 };
-// ----- setup AudioDecoder ---------
 
-let setupAudioDecoder = (config) => {
+const setupAudioDecoder = (config) => {
   let timeout = null;
   countSample = 0;
   processingAudio = true;
   waitingFrame = true;
   nbSampleTotal = audioTrack.nb_samples;
-  console.log('audio nb sample total = ', nbSampleTotal);
 
   audioDecoder = new window.AudioDecoder({
     output: (audioFrame) => {
-      audioFrames.push(audioFrame);
+      decodedAudioFrames.push(audioFrame);
 
       if (timeout) {
         clearTimeout(timeout);
@@ -516,7 +482,7 @@ let setupAudioDecoder = (config) => {
       }, 15);
     },
     error: (err) => {
-      console.log('WebCodec.AudioDecoder error : ', err);
+      console.error('AudioDecoder error : ', err);
     },
   });
 
@@ -525,139 +491,123 @@ let setupAudioDecoder = (config) => {
   file.setExtractionOptions(audioTrack.id, null, { nbSamples: nbSampleMax });
 };
 
-// ----- setup mp4box and instanciate videoDecoder & videoEncoder ------
-
-file = MP4Box.createFile();
-
-file.onerror = (e) => {
-  console.log('file onerror ', e);
-};
-
-file.onError = (e) => {
-  console.warn('MP4Box file error => ', e);
-};
-file.onReady = (info) => {
-  muxStarted = true;
-  debugger;
-  videoTrack = info.videoTracks[0];
-  audioTrack = info.audioTracks[0];
-  console.log('audioTrack ', audioTrack);
-
-  if (audioTrack) {
-    audioSamplerate = audioTrack.audio.sample_rate;
-    audioChannelCount = audioTrack.audio.channel_count;
-    audioNbSample = audioTrack.nb_samples;
-  }
-  videoNbSample = videoTrack.nb_samples;
-  videoDuration = (info.duration / info.timescale) * 1000;
-  // |-> with some videos, videoTrack.movie_duration doesn't match with the real duration
-
-  videoFramerate = Math.ceil(1000 / (videoDuration / videoTrack.nb_samples));
-  videoFrameDurationInMicrosecond = oneSecondInMicrosecond / videoFramerate;
-  // |-> using Math.ceil doesn't seem to be a good idea, I'll see that later...
-
-  videoW = videoTrack.track_width;
-  videoH = videoTrack.track_height;
-
-  outputW = videoW * encodingVideoScale;
-  outputH = videoH * encodingVideoScale;
-
-  console.log('videoFramerate ', videoFramerate);
-
-  setupVideoEncoder({
-    codec: 'avc1.42001E',
-    width: outputW,
-    height: outputH,
-    hardwareAcceleration: 'prefer-hardware',
-    framerate: videoFramerate,
-    bitrate: 15000000,
-    avc: { format: 'avc' },
-  });
-
-  setupVideoDecoder({
-    codec: videoTrack.codec,
-    codedWidth: videoW,
-    codedHeight: videoH,
-    description: getExtradata(),
-  });
-
-  onVideoReadyToPlay();
-  //= > at the bottom of the code , will call getNextSampleArray();
-  //                               |===> will call file.start();
-};
-
-file.onSamples = (trackId, ref, samples) => {
-  // I process the dumux-step little by little in order to save memory
-  // so I stop file reading between 2 demux-process
-
-  if (videoTrack.id === trackId) {
-    stopped = true;
-    file.stop();
-
-    countSample += samples.length;
-
-    for (const sample of samples) {
-      const type = sample.is_sync ? 'key' : 'delta';
-
-      const chunk = new window.EncodedVideoChunk({
-        type,
-        timestamp: sample.cts,
-        duration: sample.duration,
-        data: sample.data,
-      });
-
-      videoDecoder.decode(chunk);
-    }
-
-    if (countSample === nbSampleTotal) {
-      videoDecoder.flush();
-    }
-
-    return;
-  }
-
-  //-----------
-
-  if (audioTrack.id === trackId) {
-    // console.log("get audio sample")
-
-    stopped = true;
-    file.stop();
-    countSample += samples.length;
-
-    // console.log("onSample ",countSample+" VS "+nbSampleTotal)
-
-    for (const sample of samples) {
-      const type = sample.is_sync ? 'key' : 'delta';
-
-      const chunk = new window.EncodedAudioChunk({
-        type,
-        timestamp: sample.cts,
-        duration: sample.duration,
-        data: sample.data,
-        offset: sample.offset,
-      });
-
-      audioDecoder.decode(chunk);
-    }
-
-    if (countSample === nbSampleTotal) {
-      audioDecoder.flush();
-    }
-  }
-};
-
 const loadFile = (url) => {
-  fetch(url).then((response) => {
-    // we fill our Mp4BoxFile with the data of our video file
+  file = MP4Box.createFile();
 
+  file.onerror = (e) => {
+    console.error('file onerror ', e);
+  };
+
+  file.onError = (e) => {
+    console.error('MP4Box file error => ', e);
+  };
+  file.onReady = (info) => {
+    muxStarted = true;
+    videoTrack = info.videoTracks[0];
+    audioTrack = info.audioTracks[0];
+
+    if (audioTrack) {
+      // audioSamplerate = audioTrack.audio.sample_rate;
+      // audioChannelCount = audioTrack.audio.channel_count;
+      // audioNbSample = audioTrack.nb_samples;
+      audioTotalTimestamp = audioTrack.samples_duration / audioTrack.audio.sample_rate * ONE_SECOND_IN_MICROSECOND;
+    }
+    videoNbSample = videoTrack.nb_samples;
+    // TODO: 有一些视频，videoTrack.movie_duration 得不到正确的 duration
+    videoDuration = (info.duration / info.timescale) * 1000;
+
+    // TODO: 使用 Math.ceil 会导致不精确
+    videoFramerate = Math.ceil(1000 / (videoDuration / videoTrack.nb_samples));
+    videoFrameDurationInMicrosecond = ONE_SECOND_IN_MICROSECOND / videoFramerate;
+
+    videoW = videoTrack.track_width;
+    videoH = videoTrack.track_height;
+
+    outputW = videoW * encodingVideoScale;
+    outputH = videoH * encodingVideoScale;
+
+    setupVideoEncoder({
+      codec: 'avc1.42001E',
+      width: outputW,
+      height: outputH,
+      hardwareAcceleration: 'prefer-hardware',
+      framerate: videoFramerate,
+      bitrate: BITRATE,
+      avc: { format: 'avc' },
+    });
+
+    setupVideoDecoder({
+      codec: videoTrack.codec,
+      codedWidth: videoW,
+      codedHeight: videoH,
+      description: getExtradata(),
+    });
+
+    onVideoReadyToPlay(); // getNextSampleArray() => file.start()
+  };
+
+  file.onSamples = (trackId, ref, samples) => {
+    // 为了节省内存，一点一点地处理dumux-step，所以在两个demux-process之间停止读文件
+
+    if (videoTrack.id === trackId) {
+      stopped = true;
+      file.stop();
+
+      countSample += samples.length;
+
+      for (const sample of samples) {
+        const type = sample.is_sync ? 'key' : 'delta';
+
+        const chunk = new window.EncodedVideoChunk({
+          type,
+          timestamp: sample.cts,
+          duration: sample.duration,
+          data: sample.data,
+        });
+
+        videoDecoder.decode(chunk);
+      }
+
+      if (countSample === nbSampleTotal) {
+        videoDecoder.flush();
+      }
+
+      return;
+    }
+
+    if (audioTrack.id === trackId) {
+      stopped = true;
+      file.stop();
+      countSample += samples.length;
+
+      for (const sample of samples) {
+        const type = sample.is_sync ? 'key' : 'delta';
+
+        const chunk = new window.EncodedAudioChunk({
+          type,
+          timestamp: sample.cts,
+          duration: sample.duration,
+          data: sample.data,
+          offset: sample.offset,
+        });
+
+        audioDecoder.decode(chunk);
+      }
+
+      if (countSample === nbSampleTotal) {
+        audioDecoder.flush();
+      }
+    }
+  };
+
+  fetch(url).then((response) => {
     let offset = 0;
     let buf;
     const reader = response.body.getReader();
 
     const push = () => reader.read().then(({ done, value }) => {
       if (done === true) {
-        file.flush(); // -> will call file.onReady
+        file.flush(); // 会触发 file.onReady
         return;
       }
 
@@ -667,17 +617,18 @@ const loadFile = (url) => {
       file.appendBuffer(buf);
       push();
     }).catch((e) => {
-      console.log('reader error ', e);
+      console.error('reader error ', e);
     });
     push();
   });
 };
 
-//--------------------------
-
 let onVideoReadyToPlay = () => {
-  console.log('videoReadyToPlay');
   getNextSampleArray();
 };
 
-loadFile(url);
+function main() {
+  loadFile(FILE_URL);
+}
+
+main();
