@@ -6,8 +6,8 @@ const FPS = 25;
 const ONE_SECOND_IN_MICROSECOND = 1000000;
 const BITRATE = 15000000;
 const MICROSECONDS_PER_FRAME = ONE_SECOND_IN_MICROSECOND / FPS;
+const SAMPLE_RATE = 44100;
 
-// const SAMPLE_RATE = 44100;
 // const BUFFER_LENGTH = MICROSECONDS_PER_FRAME / ONE_SECOND_IN_MICROSECOND * SAMPLE_RATE;
 
 let muxStarted = false;
@@ -37,19 +37,6 @@ let audioDecoder = null;
 const decodedAudioFrames = [];
 let decodedAudioFrameCount = 0;
 let audioTotalTimestamp = 0;
-// let audioNbSample;
-// let audioSamplerate;
-// let audioChannelCount;
-// const leftChannelOptions = {
-//   planeIndex: 0,
-//   frameOffset: 0,
-//   frameCount: audioSampleLength,
-// };
-// const rightChannelOptions = {
-//   planeIndex: 1,
-//   frameOffset: 0,
-//   frameCount: audioSampleLength,
-// };
 let processingAudio = false;
 
 let videoEncoder = null;
@@ -303,10 +290,10 @@ const setupVideoEncoder = (config) => {
 
 let setupAudioEncoder = (config) => {
   const audioEncodingTrackOptions = {
-    timescale: 44100,
-    media_duration: 1476608,
-    duration: 33484,
-    nb_samples: 548,
+    timescale: SAMPLE_RATE,
+    media_duration: 0,
+    duration: 0,
+    nb_samples: 0,
     width: 0,
     height: 0,
     hdlr: 'soun',
@@ -315,7 +302,7 @@ let setupAudioEncoder = (config) => {
   };
 
   const audioEncodingSampleOptions = {
-    duration: videoFrameDurationInMicrosecond,
+    duration: 0,
     dts: 0,
     cts: 0,
     is_sync: false,
@@ -328,6 +315,9 @@ let setupAudioEncoder = (config) => {
         // 且没有找到将两段对齐的 API，只能手动算一个不精确的值了
         // https://github.com/w3c/webcodecs/issues/240
         totalaudioEncodeCount = Math.floor(audioTotalTimestamp / encodedChunk.duration);
+        audioEncodingTrackOptions.nb_samples = totalaudioEncodeCount;
+        audioEncodingTrackOptions.duration = audioTotalTimestamp / 1000;
+        audioEncodingTrackOptions.media_duration = audioTotalTimestamp * SAMPLE_RATE / 1000;
         encodingAudioTrack = outputFile.addTrack(audioEncodingTrackOptions);
       }
 
@@ -336,6 +326,7 @@ let setupAudioEncoder = (config) => {
 
       audioEncodingSampleOptions.dts = encodedAudioFrameCount * encodedChunk.duration;
       audioEncodingSampleOptions.cts = encodedAudioFrameCount * encodedChunk.duration;
+      audioEncodingSampleOptions.duration = encodedChunk.duration;
       audioEncodingSampleOptions.is_sync = encodedChunk.type === 'key';
 
       outputFile.addSample(encodingAudioTrack, buffer, audioEncodingSampleOptions);
