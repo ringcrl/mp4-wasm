@@ -12,7 +12,8 @@ const SAMPLE_RATE = 44100;
 
 let muxStarted = false;
 
-const nbSampleMax = 30; // 每次提取的帧数
+// MP4BOX nbSample limits the maximum number of nbSamples
+const nbSampleMax = 30;
 let nbSampleTotal = 0;
 let countSample = 0;
 let file = null;
@@ -40,17 +41,16 @@ let audioTotalTimestamp = 0;
 let processingAudio = false;
 
 let videoEncoder = null;
-// 最后一个读取帧和最后一个编码帧之间的差异
-// 需要放慢进程，以避免VideoEncoder的饱和度
-// 当VideoEncoder被我们发送的数据淹没时，这个过程就会变得更慢
-// 当VideoDecoder的进程变得太慢的时候暂停视频解码/读取
+// difference between the last read frame and the last encoded frame
+// The process needs to be slowed down to avoid saturation of the VideoEncoder
 const encodingFrameDistance = 5;
 
 let waitingVideoReading = false;
 let encodedVideoFrameCount = 0;
 let encodingVideoTrack = null;
 let videoFrameDurationInMicrosecond;
-const encodingVideoScale = 0.5; // 更改输出视频
+// Changing the output video size
+const encodingVideoScale = 0.5;
 let outputW;
 let outputH;
 
@@ -90,7 +90,7 @@ const onVideoDemuxingComplete = () => {
 
   if (audioTrack && handleAudioEncoding) {
     setupAudioEncoder({
-      // codec: audioTrack.codec,
+      // codec: audioTrack.codec, // AudioEncoder does not support this field
       codec: 'opus',
       sampleRate: audioTrack.audio.sample_rate,
       numberOfChannels: audioTrack.audio.channel_count,
@@ -313,8 +313,8 @@ let setupAudioEncoder = (config) => {
   audioEncoder = new window.AudioEncoder({
     output: (encodedChunk, config) => {
       if (encodingAudioTrack === null) {
-        // audioEncoder.encode 触发的次数与 AudioEncoder.output 触发的次数不一致
-        // 且没有找到将两段对齐的 API，只能手动算一个不精确的值了
+        // The number of times audioEncoder.encode is triggered does not match the number of times AudioEncoder.output is triggered
+        // And no API was found for aligning the two segments, so I had to manually calculate an inexact value
         // https://github.com/w3c/webcodecs/issues/240
         totalaudioEncodeCount = Math.floor(audioTotalTimestamp / encodedChunk.duration);
         audioEncodingTrackOptions.nb_samples = totalaudioEncodeCount;
@@ -509,10 +509,10 @@ const loadFile = (url) => {
       audioTotalTimestamp = audioTrack.samples_duration / audioTrack.audio.sample_rate * ONE_SECOND_IN_MICROSECOND;
     }
     videoNbSample = videoTrack.nb_samples;
-    // TODO: 有一些视频，videoTrack.movie_duration 得不到正确的 duration
+    // TODO: There are some videos where videoTrack.movie_duration does not get the correct duration
     videoDuration = (info.duration / info.timescale) * 1000;
 
-    // TODO: 使用 Math.ceil 会导致不精确
+    // TODO: Using Math.ceil will result in inaccurate frames
     videoFramerate = Math.ceil(1000 / (videoDuration / videoTrack.nb_samples));
     videoFrameDurationInMicrosecond = ONE_SECOND_IN_MICROSECOND / videoFramerate;
 
@@ -543,7 +543,8 @@ const loadFile = (url) => {
   };
 
   file.onSamples = (trackId, ref, samples) => {
-    // 为了节省内存，一点一点地处理dumux-step，所以在两个demux-process之间停止读文件
+    // To save memory, process the dumux-step little by little
+    // so stop reading the file between the two demux-processes
 
     if (videoTrack.id === trackId) {
       stopped = true;
@@ -603,7 +604,7 @@ const loadFile = (url) => {
 
     const push = () => reader.read().then(({ done, value }) => {
       if (done === true) {
-        file.flush(); // 会触发 file.onReady
+        file.flush(); // will trigle file.onReady
         return;
       }
 
