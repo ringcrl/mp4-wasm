@@ -2682,6 +2682,7 @@ BoxParser.createSampleEntryCtor(BoxParser.SAMPLE_ENTRY_TYPE_VISUAL, "hev1");
 BoxParser.createSampleEntryCtor(BoxParser.SAMPLE_ENTRY_TYPE_AUDIO, 	"mp4a");
 BoxParser.createSampleEntryCtor(BoxParser.SAMPLE_ENTRY_TYPE_AUDIO, 	"ac-3");
 BoxParser.createSampleEntryCtor(BoxParser.SAMPLE_ENTRY_TYPE_AUDIO, 	"ec-3");
+BoxParser.createSampleEntryCtor(BoxParser.SAMPLE_ENTRY_TYPE_AUDIO, 	"opus");
 
 // Encrypted sample entries
 BoxParser.createEncryptedSampleEntryCtor(BoxParser.SAMPLE_ENTRY_TYPE_VISUAL, 	"encv");
@@ -6759,6 +6760,7 @@ ISOFile.prototype.addTrack = function (_options) {
 
 	var minf = mdia.add("minf");
 	if (BoxParser[options.type+"SampleEntry"] === undefined) return;
+
 	var sample_description_entry = new BoxParser[options.type+"SampleEntry"]();
 	sample_description_entry.data_reference_index = 1;
 	var media_type = "";

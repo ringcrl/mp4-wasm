@@ -300,7 +300,7 @@ let setupAudioEncoder = (config) => {
     height: 0,
     hdlr: 'soun',
     name: 'SoundHandler',
-    type: 'mp4a',
+    type: 'opus',
   };
 
   const audioEncodingSampleOptions = {
@@ -319,15 +319,22 @@ let setupAudioEncoder = (config) => {
         totalaudioEncodeCount = Math.floor(audioTotalTimestamp / encodedChunk.duration);
         audioEncodingTrackOptions.nb_samples = totalaudioEncodeCount;
         const trackDuration = audioTotalTimestamp / ONE_SECOND_IN_MICROSECOND;
-        audioEncodingTrackOptions.duration = trackDuration;
+        // tkhd.dutation: 33600 (00:00:00.700) timescales * seconds
+        audioEncodingTrackOptions.duration = trackDuration * SAMPLE_RATE;
+
+        // mvhd.duration: 33600 (00:00:00.700) timescales * seconds
         audioEncodingTrackOptions.media_duration = trackDuration * SAMPLE_RATE;
+
+        // TODO: check if correct
+        // audioEncodingTrackOptions.description = config.decoderConfig.description;
+
         encodingAudioTrack = outputFile.addTrack(audioEncodingTrackOptions);
       }
 
       const buffer = new ArrayBuffer(encodedChunk.byteLength);
       encodedChunk.copyTo(buffer);
 
-      const sampleDuration = encodedChunk.duration / SAMPLE_RATE;
+      const sampleDuration = encodedChunk.duration / ONE_SECOND_IN_MICROSECOND * SAMPLE_RATE;
 
       audioEncodingSampleOptions.dts = encodedAudioFrameCount * sampleDuration;
       audioEncodingSampleOptions.cts = encodedAudioFrameCount * sampleDuration;
