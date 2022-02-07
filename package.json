@@ -15,14 +15,15 @@
   "browser": "./build/mp4.js",
   "devDependencies": {
     "esbuild": "^0.8.44",
-    "rimraf": "^3.0.2",
-    "serve": "^11.3.2",
     "eslint": "^7.2.0",
     "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.22.1"
+    "eslint-plugin-import": "^2.22.1",
+    "rimraf": "^3.0.2",
+    "serve": "^11.3.2",
+    "webpack-cli": "^4.9.1"
   },
   "scripts": {
-    "dev": "serve .",
+    "dev": "node app.js",
     "build": "npm run clean && npm run build:wasm && npm run bundle:web && npm run bundle:node",
     "clean": "rimraf build && mkdir build",
     "build:wasm": "./build.sh",
@@ -44,5 +45,14 @@
   "homepage": "https://github.com/mattdesl/mp4-wasm",
   "bugs": {
     "url": "https://github.com/mattdesl/mp4-wasm/issues"
+  },
+  "dependencies": {
+    "@koa/cors": "^3.1.0",
+    "concat-typed-array": "^2.1.0",
+    "deepmerge": "^4.2.2",
+    "event-emitter": "^0.3.5",
+    "koa": "^2.13.4",
+    "koa-range": "^0.3.0",
+    "koa-static": "^5.0.0"
   }
 }

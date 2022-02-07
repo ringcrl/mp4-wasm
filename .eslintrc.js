@@ -49,5 +49,6 @@ module.exports = {
     'max-classes-per-file': 0,
     'no-bitwise': 0,
     'prefer-destructuring': 0,
+    'no-debugger': 0,
   },
 };

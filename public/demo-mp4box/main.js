@@ -472,6 +472,7 @@ const setupAudioDecoder = (config) => {
 
   audioDecoder = new window.AudioDecoder({
     output: (audioFrame) => {
+      debugger;
       decodedAudioFrames.push(audioFrame);
 
       if (timeout) {

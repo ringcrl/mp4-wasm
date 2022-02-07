@@ -27,7 +27,7 @@ function getApp() {
 
   const style = new PIXI.TextStyle({
     fontFamily: 'Arial',
-    fontSize: 36,
+    fontSize: 100,
     fontStyle: 'italic',
     fontWeight: 'bold',
     fill: ['#ffffff', '#00ff99'], // gradient
@@ -43,9 +43,10 @@ function getApp() {
     lineJoin: 'round',
   });
 
-  const richText = new PIXI.Text('Pixi.js 画布', style);
-  richText.x = 50;
-  richText.y = 50;
+  const richText = new PIXI.Text('Webgl 渲染', style);
+  richText.anchor.set(0.5, 0.5);
+  richText.x = WIDTH / 2;
+  richText.y = HEIGHT / 2;
   richText.zIndex = 10;
 
   app.stage.addChild(richText);
@@ -106,11 +107,10 @@ async function main() {
 
         if (currFrame >= totalFrames) {
           const costTime = Date.now() - startTime;
-          const info = `视频生成完成：
-分辨率：1280 * 720
+          const info = `分辨率：1280 * 720
 帧率：25
 视频时长：${duration}ms
-视频生成耗时：${costTime}ms`;
+解码渲染编码总耗时：${costTime}ms`;
           const buf = await encoder.end();
           showMp4PreviewAndDownloadBtn(buf, WIDTH, HEIGHT);
           generatingTips.innerText = info;
